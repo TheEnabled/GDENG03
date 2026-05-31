@@ -12,7 +12,5 @@ public:
     static void fountain(ParticleSystem& system, const Vec3& pos, int count = 50, float spread = 1.0f);
 
 	//Create a rain effect at position 'pos' that emits particles downward
-    //static void rain(ParticleSystem& system, const Vec3& pos, int count = 50, float spread = 1.0f);
+    static void rain(ParticleSystem& system, float point1, float point2, int count = 200, float spread = 3.0f);
 };
-
-

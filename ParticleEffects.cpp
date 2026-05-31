@@ -50,8 +50,32 @@ void ParticleEffects::fountain(ParticleSystem& system, const Vec3& pos, int coun
     }
 }
 
-//void ParticleEffects::rain(ParticleSystem& system, const Vec3& pos, int count, float spread)
-//{
-//
-//}
+void ParticleEffects::rain(ParticleSystem& system, float point1, float point2, int count, float spread)
+{
+    for (int i = 0; i < count; i++)
+    {
+        Particle p;
+
+        // Spawn randomly across the XZ plane at the top of the rain area
+        // BUG FIX: was (randf(point1,point2), 1.0f, 0.0f) — comma operator,
+        //           NOT a Vec3 initializer, so position was never set correctly.
+        p.position.x = randf(point1, point2);
+        p.position.y = 1.0f;                    // spawn at the top
+        p.position.z = randf(point1, point2);
+
+        // Falling straight down; tiny x/z drift for natural look
+        // BUG FIX: velocity.x and velocity.z were never assigned (defaulted to 0),
+        //           causing all drops to fall in a single vertical column.
+        p.velocity.x = randf(-0.05f, 0.05f);
+        p.velocity.y = randf(-spread, -spread * 0.5f); // negative = downward
+        p.velocity.z = randf(-0.05f, 0.05f);
+
+        // Blue-tinted raindrop color
+        p.color = { randf(0.4f, 0.6f), randf(0.4f, 0.6f), randf(0.9f, 1.0f), 1.0f };
+        p.life_total = p.lifetime = randf(1.0f, 2.0f);
+        p.alive = true;
+
+        system.emit(p);
+    }
+}
 

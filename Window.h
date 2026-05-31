@@ -11,7 +11,7 @@ public:
 	bool broadcast();
 	// Release window
 	bool release();
-	bool isRun();
+	bool isRun() const;
 
     RECT getClientWindowRect() const;
 
@@ -27,5 +27,5 @@ public:
 protected:
 	HWND m_hwnd;
 	bool m_is_run;
-	MSG  msg;
+	MSG  msg{};
 };

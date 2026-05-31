@@ -39,7 +39,7 @@ bool Window::init()
 	if (!window)
 		window = this;
 
-	WNDCLASSEX wc;
+	WNDCLASSEX wc = {};
 	wc.cbClsExtra = NULL;
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.cbWndExtra = NULL;
@@ -99,7 +99,7 @@ bool Window::release()
 	return true;
 }
 
-bool Window::isRun()
+bool Window::isRun() const
 {
 	return m_is_run;
 }

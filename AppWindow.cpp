@@ -55,17 +55,17 @@ void AppWindow::onCreate()
     // ---- Create the particle system ----
     m_particleSystem = new ParticleSystem(2000);
 
-    // Fire an initial explosion so particles appear immediately
-    ParticleEffects::fountain(*m_particleSystem, Vec3{0.0f, -0.5f, 0.0f}, 600, 1.0f);
-
+    // Seed the pool with one initial batch so the screen isn't empty at startup.
+    // onUpdate() will continuously top it up each frame.
+    ParticleEffects::rain(*m_particleSystem, -0.9f, 0.9f, 100, 1.5f);
 
     // ---- Create the dynamic vertex buffer that we'll stream into each frame ----
     // max_vertices = 2000, matching the ParticleSystem capacity
     m_particleVB = GraphicsEngine::get()->createVertexBuffer();
     m_particleVB->loadDynamic(
         sizeof(ParticleVertex),
-        2000,
-        m_vs_blob,        // vertex shader bytecode needed to create the input layout
+        12000,             // 2000 particles * 6 verts each (2 triangles per quad)
+        m_vs_blob,
         (UINT)m_vs_blob_size
     );
     // Now safe to release the vertex shader blob
@@ -85,29 +85,47 @@ void AppWindow::onUpdate()
     // ---- Update particle simulation ----
     m_particleSystem->update(dt);
 
-    // ---- Periodically emit a new fountain burst ----
-    m_emit_accum += dt;
-    if (m_emit_accum >= m_emit_interval)
-    {
-        m_emit_accum = 0.0f;
-        ParticleEffects::fountain(*m_particleSystem, Vec3{0.0f, 0.0f, 0.0f}, 50, 1.0f);
-    }
+    // ---- Continuously drip new rain drops every frame ----
+    // Emitting a small count per frame means as old drops die their slots
+    // are immediately reused, keeping the rain density visually steady.
+    ParticleEffects::rain(*m_particleSystem, -0.9f, 0.9f, 8, 1.5f);
+
+    //ParticleEffects::fountain(*m_particleSystem, Vec3{ 0.0f, 0.0f, 0.0f }, 50, 1.0f);
 
     // ---- Build CPU-side render vertex array from alive particles ----
+    // Each particle expands into a quad (2 triangles = 6 vertices).
+    // Adjust half_size to control how big each particle appears on screen.
+    const float half_size = 0.008f; // tweak this value to resize particles
+
     std::vector<ParticleVertex> verts;
-    verts.reserve(m_particleSystem->particles().size());
+    verts.reserve(m_particleSystem->particles().size() * 6);
 
     for (const Particle& p : m_particleSystem->particles())
     {
         if (!p.alive) continue;
-        ParticleVertex v;
-        v.x = p.position.x;
-        v.y = p.position.y;
-        v.z = p.position.z;
-        v.r = p.color.r * p.color.a;   // pre-multiply alpha for simple fade
-        v.g = p.color.g * p.color.a;
-        v.b = p.color.b * p.color.a;
-        verts.push_back(v);
+
+        float cx = p.position.x;
+        float cy = p.position.y;
+        float cz = p.position.z;
+        float r  = p.color.r * p.color.a;
+        float g  = p.color.g * p.color.a;
+        float b  = p.color.b * p.color.a;
+
+        // 4 corners of the quad
+        ParticleVertex tl = { cx - half_size, cy + half_size, cz, r, g, b }; // top-left
+        ParticleVertex tr = { cx + half_size, cy + half_size, cz, r, g, b }; // top-right
+        ParticleVertex bl = { cx - half_size, cy - half_size, cz, r, g, b }; // bottom-left
+        ParticleVertex br = { cx + half_size, cy - half_size, cz, r, g, b }; // bottom-right
+
+        // Triangle 1: top-left, top-right, bottom-left
+        verts.push_back(tl);
+        verts.push_back(tr);
+        verts.push_back(bl);
+
+        // Triangle 2: top-right, bottom-right, bottom-left
+        verts.push_back(tr);
+        verts.push_back(br);
+        verts.push_back(bl);
     }
 
     // ---- Upload to GPU ----
@@ -116,8 +134,7 @@ void AppWindow::onUpdate()
         m_particleVB->updateDynamic(verts.data(), alive_count);
 
     // ---- Render ----
-    GraphicsEngine::get()->getImmediateDeviceContext()->clearRenderTargetColor(
-        this->m_swap_chain, 0, 0.05f, 0.07f, 1);
+    GraphicsEngine::get()->getImmediateDeviceContext()->clearRenderTargetColor(this->m_swap_chain, 0, 0.0f, 0.0f, 1);
 
     RECT rc = getClientWindowRect();
     GraphicsEngine::get()->getImmediateDeviceContext()->setViewportSize(
@@ -129,7 +146,7 @@ void AppWindow::onUpdate()
     if (alive_count > 0)
     {
         GraphicsEngine::get()->getImmediateDeviceContext()->setVertexBuffer(m_particleVB);
-        GraphicsEngine::get()->getImmediateDeviceContext()->drawPointList(alive_count, 0);
+        GraphicsEngine::get()->getImmediateDeviceContext()->drawTriangleList(alive_count * 6, 0);
     }
 
     m_swap_chain->present(false);
