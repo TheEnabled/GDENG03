@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "InputSystem.h"
 
 Window* window = nullptr;
 
@@ -26,7 +27,26 @@ LRESULT CALLBACK Wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		::PostQuitMessage(0);
 		break;
 	}
-
+	case WM_KEYDOWN:
+	{
+		std::map<InputListener*, InputListener*>::iterator it = InputSystem::get()->m_map_listeners.begin();
+		while (it != InputSystem::get()->m_map_listeners.end())
+		{
+			it->second->onKeyDown((int)wparam);
+			it++;
+		}
+		break;
+	}
+	case WM_KEYUP:
+	{
+		std::map<InputListener*, InputListener*>::iterator it = InputSystem::get()->m_map_listeners.begin();
+		while (it != InputSystem::get()->m_map_listeners.end())
+		{
+			it->second->onKeyUp((int)wparam);
+			it++;
+		}
+		break;
+	}
 	default:
 		return ::DefWindowProc(hwnd, msg, wparam, lparam);
 	}
@@ -56,13 +76,16 @@ bool Window::init()
 	if (!RegisterClassEx(&wc))
 		return false;
 
+	RECT rc = { 0, 0, 1024, 768 };
+	::AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+
 	m_hwnd = ::CreateWindowEx(
 		WS_EX_OVERLAPPEDWINDOW,
 		L"MyWindowClass",
 		L"DirectX Application",
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		1024, 768,
+		rc.right - rc.left, rc.bottom - rc.top,
 		NULL, NULL, NULL, NULL);
 
 	if (!m_hwnd)

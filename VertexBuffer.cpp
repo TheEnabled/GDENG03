@@ -2,7 +2,7 @@
 #include "GraphicsEngine.h"
 
 
-VertexBuffer::VertexBuffer() :m_layout(0), m_buffer(0), m_size_list(0), m_size_vertex(0)
+VertexBuffer::VertexBuffer() :m_layout(0), m_buffer(0), m_size_list(0), m_size_vertex(0), m_max_vertices(0)
 {
 }
 
@@ -38,8 +38,9 @@ bool VertexBuffer::load(void* list_vertices, UINT size_vertex, UINT size_list, v
 	{
 		// FIX: changed from R32G32B32A32_FLOAT (4 floats) to R32G32B32_FLOAT (3 floats)
 		// to match the vec3 struct { float x, y, z } used in AppWindow.cpp
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}
-		,{"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		,{"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0}
 
 	};
 
@@ -59,7 +60,8 @@ bool VertexBuffer::loadDynamic(UINT size_vertex, UINT max_vertices, void* shader
 	if (m_layout) { m_layout->Release(); m_layout = nullptr; }
 
 	m_size_vertex = size_vertex;
-	m_size_list   = max_vertices;
+	m_size_list   = max_vertices;  // initialise live count to capacity
+	m_max_vertices = max_vertices; // store capacity — never changes after this
 
 	// D3D11_USAGE_DYNAMIC lets us Map/Unmap every frame from the CPU
 	D3D11_BUFFER_DESC desc = {};
@@ -71,11 +73,14 @@ bool VertexBuffer::loadDynamic(UINT size_vertex, UINT max_vertices, void* shader
 	if (FAILED(GraphicsEngine::get()->m_d3d_device->CreateBuffer(&desc, nullptr, &m_buffer)))
 		return false;
 
-	// Particle render vertex: float3 position + float3 color (matches VertexShader.hlsl)
+	// Particle render vertex: float3 pos0 + float3 pos1 + float3 color
+	// pos1 == pos0 for particles (no lerp animation), but the layout must match
+	// the vertex shader's input signature which always declares both POSITION slots.
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
 	if (FAILED(GraphicsEngine::get()->m_d3d_device->CreateInputLayout(
@@ -101,13 +106,14 @@ bool VertexBuffer::updateDynamic(void* data, UINT vertex_count)
 		return false;
 	}
 
-	UINT copy_count = (vertex_count < m_size_list) ? vertex_count : m_size_list;
+	// Cap to GPU buffer capacity (m_max_vertices), NOT m_size_list which tracks live count
+	UINT copy_count = (vertex_count < m_max_vertices) ? vertex_count : m_max_vertices;
 	memcpy(mapped.pData, data, static_cast<size_t>(m_size_vertex) * copy_count);
 
 	ctx->Unmap(m_buffer, 0);
 	ctx->Release();
 
-	m_size_list = copy_count; // track live vert count for the draw call
+	m_size_list = copy_count; // track live vert count for getSizeVertexList()
 	return true;
 }
 

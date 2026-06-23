@@ -20,7 +20,8 @@ public:
 
 private:
 	UINT m_size_vertex;
-	UINT m_size_list;
+	UINT m_size_list;       // current live vertex count (updated each frame)
+	UINT m_max_vertices;    // GPU buffer capacity (set once in loadDynamic, never shrinks)
 
 private:
 	ID3D11Buffer* m_buffer;
