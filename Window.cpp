@@ -10,7 +10,7 @@ Window::Window()
 {
 }
 
-LRESULT CALLBACK Wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK Wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg)
 	{
@@ -20,7 +20,11 @@ LRESULT CALLBACK Wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		window->onCreate();    // because CreateWindowEx hasn't returned yet
 		break;                 // so m_hwnd would still be nullptr otherwise
 	}
-
+	case WM_SETFOCUS:
+	{
+		window->onFocus();
+		break;
+	}
 	case WM_DESTROY:
 	{
 		window->onDestroy();
@@ -101,6 +105,8 @@ bool Window::init()
 
 bool Window::broadcast()
 {
+	InputSystem::get()->update();
+
 	this->onUpdate();
 
 	while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) > 0)
@@ -142,6 +148,14 @@ void Window::setHWND(HWND hwnd)
 void Window::onDestroy()
 {
 	m_is_run = false;
+}
+
+void Window::onFocus()
+{
+}
+
+void Window::onKillFocus()
+{
 }
 
 Window::~Window()

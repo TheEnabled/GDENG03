@@ -15,9 +15,14 @@ DeviceContext::DeviceContext(ID3D11DeviceContext* device_context)
 void DeviceContext::clearRenderTargetColor(SwapChain* swap_chain, float red, float green, float blue, float alpha)
 {
 	FLOAT clear_color[4] = { red, green, blue, alpha };
-	ID3D11RenderTargetView* rtv = swap_chain->getRenderTargetView(); // FIX: use getter; m_rtv is private
+	ID3D11RenderTargetView*  rtv = swap_chain->getRenderTargetView();
+	ID3D11DepthStencilView*  dsv = swap_chain->getDepthStencilView();
+
 	m_device_context->ClearRenderTargetView(rtv, clear_color);
-	m_device_context->OMSetRenderTargets(1, &rtv, NULL);
+	if (dsv)
+		m_device_context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+	m_device_context->OMSetRenderTargets(1, &rtv, dsv);   // bind depth buffer
 }
 
 // FIX: changed return type from bool to void to match header

@@ -149,6 +149,12 @@
     <ClInclude Include="InputListener.h">
       <Filter>GameEngine\GraphicsEngine\InputSystem</Filter>
     </ClInclude>
+    <ClInclude Include="Point.h">
+      <Filter>GameEngine\GraphicsEngine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector4D.h">
+      <Filter>GameEngine\GraphicsEngine\Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VertexShader.hlsl">
@@ -157,5 +163,8 @@
     <FxCompile Include="PixelShader.hlsl">
       <Filter>App</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="README.txt" />
   </ItemGroup>
 </Project>
